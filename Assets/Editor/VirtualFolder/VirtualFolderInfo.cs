@@ -83,6 +83,15 @@ namespace VirtualFolder
             children.Add(new VirtualFolderInfo("New Folder", this));
             return children[children.Count - 1].id;
         }
+
+        public void RemoveChild(VirtualFolderInfo info)
+        {
+            if (children != null)
+            {
+                info.parent = null;
+                children.Remove(info);
+            }
+        }
     }
 
     [Serializable]

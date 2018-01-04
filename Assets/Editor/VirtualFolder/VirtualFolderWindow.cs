@@ -59,27 +59,30 @@ namespace VirtualFolder
             DrawToolBar();
             DrawCreate();
             DoTreeView();
+            ExecuteCommands();
+            HandleKeys();
         }
 
         private void DrawToolBar()
         {
             EditorGUI.BeginDisabledGroup(m_CreateVirtualFolder);
             EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-            Rect rect = GUILayoutUtility.GetRect(s_Styles.m_FileDropdownContent, EditorStyles.toolbarDropDown);
-            if (EditorGUI.DropdownButton(rect, s_Styles.m_FileDropdownContent, FocusType.Passive, EditorStyles.toolbarDropDown))
+            Rect rect = GUILayoutUtility.GetRect(s_Styles.fileDropdownContent, EditorStyles.toolbarDropDown);
+            if (EditorGUI.DropdownButton(rect, s_Styles.fileDropdownContent, FocusType.Passive, EditorStyles.toolbarDropDown))
             {
                 GUIUtility.hotControl = 0;
                 var createMenu = new GenericMenu();
-                createMenu.AddItem(new GUIContent("New Folder"), false, CreateFolder);
+                createMenu.AddItem(s_Styles.newFolderContent, false, CreateFolder);
+                createMenu.AddItem(s_Styles.newFolderChildContent, false, CreateFolderChild);
                 createMenu.AddSeparator(String.Empty);
-                createMenu.AddItem(new GUIContent("New Virtual Folder"), false, CreateVirtualFolder);
+                createMenu.AddItem(s_Styles.newVirtualFolderContent, false, CreateVirtualFolder);
                 createMenu.AddSeparator(String.Empty);
-                createMenu.AddItem(new GUIContent("Save"), false, SaveData);
-                createMenu.AddItem(new GUIContent("Reload"), false, () => { CreateData(); SetTreeViewModelIndex(m_CurrentListIndex); });
+                createMenu.AddItem(s_Styles.saveDropdownContent, false, SaveData);
+                createMenu.AddItem(s_Styles.reloadDropdownContent, false, () => { CreateData(); SetTreeViewModelIndex(m_CurrentListIndex); });
                 createMenu.DropDown(new Rect(rect.x, 17f, 0, 0));
             }
-            rect = GUILayoutUtility.GetRect(s_Styles.m_ViewDropdownContent, EditorStyles.toolbarDropDown);
-            if (EditorGUI.DropdownButton(rect, s_Styles.m_ViewDropdownContent, FocusType.Passive, EditorStyles.toolbarDropDown))
+            rect = GUILayoutUtility.GetRect(s_Styles.viewDropdownContent, EditorStyles.toolbarDropDown);
+            if (EditorGUI.DropdownButton(rect, s_Styles.viewDropdownContent, FocusType.Passive, EditorStyles.toolbarDropDown))
             {
                 GUIUtility.hotControl = 0;
                 var createMenu = new GenericMenu();
@@ -176,6 +179,71 @@ namespace VirtualFolder
             }
         }
 
+        private void ExecuteCommands()
+        {
+            Event current = Event.current;
+            if (current.type != EventType.ExecuteCommand && current.type != EventType.ValidateCommand)
+            {
+                return;
+            }
+
+            bool flag = current.type == EventType.ExecuteCommand;
+            if (current.commandName == "Delete" || current.commandName == "SoftDelete")
+            {
+                if (flag)
+                {
+                    DeleteFolder();
+                }
+                current.Use();
+                GUIUtility.ExitGUI();
+            }
+            else if (current.commandName == "Duplicate")
+            {
+                if (flag)
+                {
+                    DuplicateFolder();
+                }
+                current.Use();
+                GUIUtility.ExitGUI();
+            }
+            else if (current.commandName == "FrameSelected")
+            {
+                if (current.type == EventType.ExecuteCommand)
+                {
+                    FrameFolder();
+                }
+                current.Use();
+                GUIUtility.ExitGUI();
+            }
+        }
+
+        private void HandleKeys()
+        {
+            Event current = Event.current;
+            if (current.type != EventType.KeyDown || m_TreeView == null)
+            {
+                return;
+            }
+            if (m_TreeView.treeViewControlID != GUIUtility.keyboardControl)
+            {
+                return;
+            }
+
+            if (current.keyCode == KeyCode.D)
+            {
+                if (EditorGUI.actionKey && current.shift)
+                {
+                    CreateFolder();
+                    current.Use();
+                }
+                else if (current.alt && current.shift)
+                {
+                    CreateFolderChild();
+                    current.Use();
+                }
+            }
+        }
+
         private void CreateData()
         {
             if (!File.Exists(s_ConfigPath))
@@ -223,6 +291,7 @@ namespace VirtualFolder
                 return false;
             }
 
+            m_TreeView.searchString = String.Empty;
             if (!m_VirtualFolderList.ContainsRoot(m_CreateName))
             {
                 m_VirtualFolderList.AddRoot(m_CreateName);
@@ -235,7 +304,30 @@ namespace VirtualFolder
         private void CreateFolder()
         {
             var selection = m_TreeViewState.selectedIDs;
-            if (selection.Count == 0)
+            if (selection.Count == 0 || m_TreeView.hasSearch)
+            {
+                return;
+            }
+
+            VirtualFolderInfo info = m_VirtualFolderList.rootList[m_CurrentListIndex].Find(selection[0]);
+            if (info != null)
+            {
+                if (info.parent != null)
+                {
+                    info = info.parent;
+                }
+                int id = info.AddChild();
+                m_TreeView.Reload();
+                m_TreeView.SetExpanded(info.id, true);
+                m_TreeView.SetSelection(new List<int>() { id }, TreeViewSelectionOptions.RevealAndFrame);
+                m_TreeView.BeginRename(m_TreeView.GetItemById(id));
+            }
+        }
+
+        private void CreateFolderChild()
+        {
+            var selection = m_TreeViewState.selectedIDs;
+            if (selection.Count == 0 || m_TreeView.hasSearch)
             {
                 return;
             }
@@ -246,9 +338,43 @@ namespace VirtualFolder
                 int id = info.AddChild();
                 m_TreeView.Reload();
                 m_TreeView.SetExpanded(info.id, true);
-                m_TreeView.SetSelection(new List<int>() {id}, TreeViewSelectionOptions.RevealAndFrame);
+                m_TreeView.SetSelection(new List<int>() { id }, TreeViewSelectionOptions.RevealAndFrame);
                 m_TreeView.BeginRename(m_TreeView.GetItemById(id));
             }
+        }
+
+        private void DeleteFolder()
+        {
+            var selection = m_TreeViewState.selectedIDs;
+            if (selection.Count == 0 || m_TreeView.hasSearch)
+            {
+                return;
+            }
+
+            VirtualFolderInfo info = m_VirtualFolderList.rootList[m_CurrentListIndex].Find(selection[0]);
+            if (info != null)
+            {
+                if (info.parent != null)
+                {
+                    info.parent.RemoveChild(info);
+                    m_TreeView.Reload();
+                }
+            }
+        }
+
+        private void DuplicateFolder()
+        {
+            CreateFolder();
+        }
+
+        private void FrameFolder()
+        {
+            var selection = m_TreeViewState.selectedIDs;
+            if (selection.Count == 0)
+            {
+                return;
+            }
+            m_TreeView.FrameItemById(selection[0], true);
         }
 
         private void ViewVirtualFolder(object obj)
@@ -258,8 +384,13 @@ namespace VirtualFolder
 
         private class Styles
         {
-            public GUIContent m_FileDropdownContent = new GUIContent("File");
-            public GUIContent m_ViewDropdownContent = new GUIContent("View");
+            public readonly GUIContent fileDropdownContent = new GUIContent("File");
+            public readonly GUIContent viewDropdownContent = new GUIContent("View");
+            public readonly GUIContent newFolderContent = new GUIContent("New Folder %#d");
+            public readonly GUIContent newFolderChildContent = new GUIContent("New Folder Child &#d");
+            public readonly GUIContent newVirtualFolderContent = new GUIContent("New Virtual Folder");
+            public readonly GUIContent saveDropdownContent = new GUIContent("Save Config");
+            public readonly GUIContent reloadDropdownContent = new GUIContent("Reload Config");
 
             private static GUIStyle GetStyle(string styleName)
             {

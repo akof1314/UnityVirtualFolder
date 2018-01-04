@@ -39,16 +39,23 @@ namespace VirtualFolder
             var rows = GetRows() ?? new List<TreeViewItem>(200);
 
             rows.Clear();
-            var childItem = new TreeViewItem(m_Infos.id, -1, m_Infos.name);
-            root.AddChild(childItem);
-            rows.Add(childItem);
-            if (IsExpanded(childItem.id))
+            if (!string.IsNullOrEmpty(searchString))
             {
-                AddChildrenRecursive(m_Infos, childItem, rows);
+                Search(m_Infos, searchString, rows);
             }
             else
             {
-                childItem.children = CreateChildListForCollapsedParent();
+                var childItem = new TreeViewItem(m_Infos.id, -1, m_Infos.name);
+                root.AddChild(childItem);
+                rows.Add(childItem);
+                if (IsExpanded(childItem.id))
+                {
+                    AddChildrenRecursive(m_Infos, childItem, rows);
+                }
+                else
+                {
+                    childItem.children = CreateChildListForCollapsedParent();
+                }
             }
 
             SetupDepthsFromParentsAndChildren(root);
@@ -80,6 +87,35 @@ namespace VirtualFolder
                     else
                     {
                         childItem.children = CreateChildListForCollapsedParent();
+                    }
+                }
+            }
+        }
+
+        private void Search(VirtualFolderInfo searchFromThis, string search, IList<TreeViewItem> result)
+        {
+            if (string.IsNullOrEmpty(search))
+                throw new ArgumentException("Invalid search: cannot be null or empty", "search");
+
+            int itemDepth = 0; // tree is flattened when searching
+
+            Stack<VirtualFolderInfo> stack = new Stack<VirtualFolderInfo>();
+            foreach (var element in searchFromThis.children)
+                stack.Push((VirtualFolderInfo)element);
+            while (stack.Count > 0)
+            {
+                VirtualFolderInfo current = stack.Pop();
+                // Matches search?
+                if (current.name.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    result.Add(new TreeViewItem(current.id, itemDepth, current.name));
+                }
+
+                if (current.children != null && current.children.Count > 0)
+                {
+                    foreach (var element in current.children)
+                    {
+                        stack.Push((VirtualFolderInfo)element);
                     }
                 }
             }
@@ -152,6 +188,11 @@ namespace VirtualFolder
 
         protected override void SetupDragAndDrop(SetupDragAndDropArgs args)
         {
+            if (hasSearch)
+            {
+                return;
+            }
+
             DragAndDrop.PrepareStartDrag();
             var draggedRows = GetRows().Where(item => args.draggedItemIDs.Contains(item.id)).ToList();
             DragAndDrop.SetGenericData(kGenericDragId, draggedRows);
@@ -257,21 +298,12 @@ namespace VirtualFolder
         {
             VirtualFolderInfo info = m_Infos.Find(args.item.id);
             Rect rect = args.rowRect;
-            rect.xMax -= 20f;
             rect.xMin = rect.xMax - 150f;
-            if (string.IsNullOrEmpty(info.path))
+            if (Event.current.rawType == EventType.Repaint)
             {
-                rect.xMin = rect.xMax - 50f;
-                GUI.Button(rect, "Create");
+                lineStyle.Draw(rect, Path.GetFileNameWithoutExtension(info.path), false, false, false, args.focused);
             }
-            else
-            {
-                if (Event.current.rawType == EventType.Repaint)
-                {
-                    lineStyle.Draw(rect, Path.GetFileNameWithoutExtension(info.path), false, false, false, args.focused);
-                }
-            }
-           
+
             base.RowGUI(args);
 
             if (onGUIRowCallback != null)
@@ -284,12 +316,7 @@ namespace VirtualFolder
         {
             foreach (var selectedId in selectedIds)
             {
-                VirtualFolderInfo info = m_Infos.Find(selectedId);
-                if (!string.IsNullOrEmpty(info.path))
-                {
-                    Object obj = AssetDatabase.LoadAssetAtPath<Object>(info.path);
-                    SelectFolder(obj.GetInstanceID());
-                }
+                FrameItemById(selectedId, false);
             }
         }
 
@@ -347,6 +374,21 @@ namespace VirtualFolder
                 }
             }
             return null;
+        }
+
+        public void FrameItemById(int id, bool frame)
+        {
+            VirtualFolderInfo info = m_Infos.Find(id);
+            if (!string.IsNullOrEmpty(info.path))
+            {
+                Object obj = AssetDatabase.LoadAssetAtPath<Object>(info.path);
+                SelectFolder(obj.GetInstanceID());
+
+                if (frame)
+                {
+                    EditorGUIUtility.PingObject(obj);
+                }
+            }
         }
     }
 }
