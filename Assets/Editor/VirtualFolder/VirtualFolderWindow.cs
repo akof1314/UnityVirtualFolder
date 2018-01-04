@@ -15,10 +15,10 @@ namespace VirtualFolder
             GetWindow<VirtualFolderWindow>();
         }
 
-        public delegate void WindowItemCallback(VirtualFolderInfo info, Rect selectionRect);
+        public delegate void WindowItemCallback(VirtualFolderInfo info, Rect selectionRect, TreeView treeView);
         public static WindowItemCallback windowItemOnGUI;
 
-        private static string s_ConfigPath = "Assets/Editor/VirtualFolder/VirtualFolderConfig.json";
+        public static string configPath = "Assets/Editor/VirtualFolder/VirtualFolderConfig.json";
         private static Styles s_Styles;
 
         [SerializeField]
@@ -162,13 +162,13 @@ namespace VirtualFolder
             SetTreeViewModelIndex(m_CurrentListIndex);
         }
 
-        private void OnGUIItemCallback(VirtualFolderInfo info, Rect rect)
+        private void OnGUIItemCallback(VirtualFolderInfo info, Rect rect, TreeView treeView)
         {
             if (windowItemOnGUI == null)
             {
                 return;
             }
-            windowItemOnGUI(info, rect);
+            windowItemOnGUI(info, rect, treeView);
         }
 
         private void OnLostFocus()
@@ -246,12 +246,12 @@ namespace VirtualFolder
 
         private void CreateData()
         {
-            if (!File.Exists(s_ConfigPath))
+            if (!File.Exists(configPath))
             {
                 m_VirtualFolderList = new VirtualFolderList();
                 return;
             }
-            string json = File.ReadAllText(s_ConfigPath);
+            string json = File.ReadAllText(configPath);
             m_VirtualFolderList = VirtualFolderList.CreateFromString(json);
         }
 
@@ -259,8 +259,8 @@ namespace VirtualFolder
         {
             if (m_VirtualFolderList != null)
             {
-                File.WriteAllText(s_ConfigPath, m_VirtualFolderList.SaveToString());
-                AssetDatabase.ImportAsset(s_ConfigPath, ImportAssetOptions.Default);
+                File.WriteAllText(configPath, m_VirtualFolderList.SaveToString());
+                AssetDatabase.ImportAsset(configPath, ImportAssetOptions.Default);
             }
         }
 
@@ -316,11 +316,11 @@ namespace VirtualFolder
                 {
                     info = info.parent;
                 }
-                int id = info.AddChild();
+                VirtualFolderInfo childInfo = info.AddChild();
                 m_TreeView.Reload();
                 m_TreeView.SetExpanded(info.id, true);
-                m_TreeView.SetSelection(new List<int>() { id }, TreeViewSelectionOptions.RevealAndFrame);
-                m_TreeView.BeginRename(m_TreeView.GetItemById(id));
+                m_TreeView.SetSelection(new List<int>() { childInfo.id }, TreeViewSelectionOptions.RevealAndFrame);
+                m_TreeView.BeginRename(m_TreeView.GetItemById(childInfo.id));
             }
         }
 
@@ -335,11 +335,11 @@ namespace VirtualFolder
             VirtualFolderInfo info = m_VirtualFolderList.rootList[m_CurrentListIndex].Find(selection[0]);
             if (info != null)
             {
-                int id = info.AddChild();
+                VirtualFolderInfo childInfo = info.AddChild();
                 m_TreeView.Reload();
                 m_TreeView.SetExpanded(info.id, true);
-                m_TreeView.SetSelection(new List<int>() { id }, TreeViewSelectionOptions.RevealAndFrame);
-                m_TreeView.BeginRename(m_TreeView.GetItemById(id));
+                m_TreeView.SetSelection(new List<int>() { childInfo.id }, TreeViewSelectionOptions.RevealAndFrame);
+                m_TreeView.BeginRename(m_TreeView.GetItemById(childInfo.id));
             }
         }
 

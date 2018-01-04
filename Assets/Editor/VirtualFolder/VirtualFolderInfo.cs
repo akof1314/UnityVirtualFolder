@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 
@@ -74,14 +75,14 @@ namespace VirtualFolder
             return null;
         }
 
-        public int AddChild()
+        public VirtualFolderInfo AddChild()
         {
             if (children == null)
             {
                 children = new List<VirtualFolderInfo>();
             }
             children.Add(new VirtualFolderInfo("New Folder", this));
-            return children[children.Count - 1].id;
+            return children[children.Count - 1];
         }
 
         public void RemoveChild(VirtualFolderInfo info)
@@ -91,6 +92,31 @@ namespace VirtualFolder
                 info.parent = null;
                 children.Remove(info);
             }
+        }
+
+        public void RemoveAllChild()
+        {
+            if (children != null)
+            {
+                for (int i = children.Count - 1; i >= 0; i--)
+                {
+                    var info = children[i];
+                    info.parent = null;
+                    children.Remove(info);
+                }
+            }
+        }
+
+        public string GetFullName()
+        {
+            StringBuilder sb = new StringBuilder();
+            if (parent != null)
+            {
+                sb.Append(parent.GetFullName());
+                sb.Append('/');
+            }
+            sb.Append(name);
+            return sb.ToString();
         }
     }
 

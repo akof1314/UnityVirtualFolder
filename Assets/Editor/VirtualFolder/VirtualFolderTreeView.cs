@@ -15,7 +15,7 @@ namespace VirtualFolder
         private VirtualFolderInfo m_Infos;
         private static GUIStyle lineStyle = new GUIStyle("PR Label");
 
-        public System.Action<VirtualFolderInfo, Rect> onGUIRowCallback { get; set; }
+        public System.Action<VirtualFolderInfo, Rect, TreeView> onGUIRowCallback { get; set; }
 
         public VirtualFolderTreeView(TreeViewState state) : base(state)
         {
@@ -308,7 +308,7 @@ namespace VirtualFolder
 
             if (onGUIRowCallback != null)
             {
-                onGUIRowCallback(info, args.rowRect);
+                onGUIRowCallback(info, args.rowRect, this);
             }
         }
 
