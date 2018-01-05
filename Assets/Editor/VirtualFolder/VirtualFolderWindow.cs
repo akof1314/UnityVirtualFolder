@@ -17,6 +17,8 @@ namespace VirtualFolder
 
         public delegate void WindowItemCallback(VirtualFolderInfo info, Rect selectionRect, TreeView treeView);
         public static WindowItemCallback windowItemOnGUI;
+        public delegate void ViewChangedCallback(VirtualFolderInfo info, VirtualFolderTreeView treeView);
+        public static ViewChangedCallback viewChanged;
 
         public static string configPath = "Assets/Editor/VirtualFolder/VirtualFolderConfig.json";
         private static Styles s_Styles;
@@ -276,6 +278,10 @@ namespace VirtualFolder
             {
                 m_CurrentListIndex = index;
                 m_TreeView.SetModel(m_VirtualFolderList.rootList[index]);
+                if (viewChanged != null)
+                {
+                    viewChanged(m_VirtualFolderList.rootList[index], m_TreeView);
+                }
             }
         }
 
@@ -304,7 +310,7 @@ namespace VirtualFolder
         private void CreateFolder()
         {
             var selection = m_TreeViewState.selectedIDs;
-            if (selection.Count == 0 || m_TreeView.hasSearch)
+            if (selection.Count == 0 || m_TreeView.hasSearch || m_TreeView.disableEdit)
             {
                 return;
             }
@@ -327,7 +333,7 @@ namespace VirtualFolder
         private void CreateFolderChild()
         {
             var selection = m_TreeViewState.selectedIDs;
-            if (selection.Count == 0 || m_TreeView.hasSearch)
+            if (selection.Count == 0 || m_TreeView.hasSearch || m_TreeView.disableEdit)
             {
                 return;
             }
@@ -346,7 +352,7 @@ namespace VirtualFolder
         private void DeleteFolder()
         {
             var selection = m_TreeViewState.selectedIDs;
-            if (selection.Count == 0 || m_TreeView.hasSearch)
+            if (selection.Count == 0 || m_TreeView.hasSearch || m_TreeView.disableEdit)
             {
                 return;
             }

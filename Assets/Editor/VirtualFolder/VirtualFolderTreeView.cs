@@ -6,7 +6,6 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
-using Object = UnityEngine.Object;
 
 namespace VirtualFolder
 {
@@ -16,11 +15,15 @@ namespace VirtualFolder
         private static GUIStyle lineStyle = new GUIStyle("PR Label");
 
         public System.Action<VirtualFolderInfo, Rect, TreeView> onGUIRowCallback { get; set; }
+        public bool disableEdit { get; set; }
 
         public VirtualFolderTreeView(TreeViewState state) : base(state)
         {
-            lineStyle.alignment = TextAnchor.MiddleRight;
-            lineStyle.padding.right = 3;
+            lineStyle = new GUIStyle(lineStyle)
+            {
+                alignment = TextAnchor.MiddleRight,
+                padding = { right = 3 }
+            };
         }
 
         public void SetModel(VirtualFolderInfo infos)
@@ -188,7 +191,7 @@ namespace VirtualFolder
 
         protected override void SetupDragAndDrop(SetupDragAndDropArgs args)
         {
-            if (hasSearch)
+            if (hasSearch || disableEdit)
             {
                 return;
             }
@@ -196,7 +199,7 @@ namespace VirtualFolder
             DragAndDrop.PrepareStartDrag();
             var draggedRows = GetRows().Where(item => args.draggedItemIDs.Contains(item.id)).ToList();
             DragAndDrop.SetGenericData(kGenericDragId, draggedRows);
-            DragAndDrop.objectReferences = new Object[] { };
+            DragAndDrop.objectReferences = new UnityEngine.Object[] { };
             string title = draggedRows.Count == 1 ? draggedRows[0].displayName : "< Multiple >";
             DragAndDrop.StartDrag(title);
         }
@@ -297,6 +300,13 @@ namespace VirtualFolder
         protected override void RowGUI(RowGUIArgs args)
         {
             VirtualFolderInfo info = m_Infos.Find(args.item.id);
+            base.RowGUI(args);
+            if (onGUIRowCallback != null)
+            {
+                onGUIRowCallback(info, args.rowRect, this);
+            }
+            else
+            {
             Rect rect = args.rowRect;
             rect.xMin = rect.xMax - 150f;
             if (Event.current.rawType == EventType.Repaint)
@@ -304,11 +314,7 @@ namespace VirtualFolder
                 lineStyle.Draw(rect, Path.GetFileNameWithoutExtension(info.path), false, false, false, args.focused);
             }
 
-            base.RowGUI(args);
 
-            if (onGUIRowCallback != null)
-            {
-                onGUIRowCallback(info, args.rowRect, this);
             }
         }
 
@@ -381,7 +387,7 @@ namespace VirtualFolder
             VirtualFolderInfo info = m_Infos.Find(id);
             if (!string.IsNullOrEmpty(info.path))
             {
-                Object obj = AssetDatabase.LoadAssetAtPath<Object>(info.path);
+                UnityEngine.Object obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(info.path);
                 SelectFolder(obj.GetInstanceID());
 
                 if (frame)
