@@ -1,2 +1,16 @@
-# UnityVirtualFolder
-Unity VirtualFolder
+# Unity Virtual Folder 虚拟文件夹
+虚拟文件夹用来映射真实的文件夹，方便查找、归纳和汇总。
+
+- 支持多个虚拟文件夹切换
+- 保存/读取配置
+- 快捷键操作
+- 单击定位到真实文件夹
+- 提供拓展
+
+![](http://img.blog.csdn.net/20180127122226217)
+
+## 应用
+可通过扩展，实现读取角色资源列表表格文件，生成对应的角色列表，按表格的分类分成英雄、怪物等等类别。在绘制每一项时，额外绘制工具按钮，方便点击定位到预制对象，打开动作文件等等。
+
+## 源码
+https://github.com/akof1314/UnityVirtualFolder

@@ -162,6 +162,10 @@ namespace VirtualFolder
 
         protected override bool CanRename(TreeViewItem item)
         {
+            if (disableEdit)
+            {
+                return false;
+            }
             Rect renameRect = GetRenameRect(treeViewRect, 0, item);
             return renameRect.width > 30;
         }
@@ -313,9 +317,12 @@ namespace VirtualFolder
             {
                 lineStyle.Draw(rect, Path.GetFileNameWithoutExtension(info.path), false, false, false, args.focused);
             }
-
+            }
 
             }
+        protected override void DoubleClickedItem(int id)
+        {
+            FrameItemById(id, false);
         }
 
         protected override void SelectionChanged(IList<int> selectedIds)
@@ -388,6 +395,11 @@ namespace VirtualFolder
             if (!string.IsNullOrEmpty(info.path))
             {
                 UnityEngine.Object obj = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(info.path);
+                if (obj == null)
+                {
+                    info.path = String.Empty;
+                    return;
+                }
                 SelectFolder(obj.GetInstanceID());
 
                 if (frame)
